@@ -57,7 +57,7 @@ class BannerController extends Controller
 
         $img = $manager->read($image);
 
-        $img->resize(109, 70)
+        $img->resize(635, 380)
             ->save(public_path('upload/banner/' . $name_gen));
 
         $validatedData['photo'] = 'upload/banner/' . $name_gen;
@@ -103,27 +103,52 @@ class BannerController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
-    {
-        $banner = Banner::findOrFail($id);
+{
+    $banner = Banner::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:50',
-            'description' => 'nullable|string',
-            'photo' => 'required',
-            'status' => 'required|in:active,inactive',
-        ]);
+    $validatedData = $request->validate([
+        'title' => 'required|string|max:50',
+        'description' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'status' => 'required|in:active,inactive',
+    ]);
 
-        $status = $banner->update($validatedData);
+    if ($request->hasFile('photo')) {
 
-        $message = $status
-            ? 'Banner successfully updated'
-            : 'Error occurred while updating banner';
+        // Delete old image
+        if ($banner->photo && file_exists(public_path($banner->photo))) {
+            unlink(public_path($banner->photo));
+        }
 
-        return redirect()->route('banner.index')->with(
-            $status ? 'success' : 'error',
-            $message
-        );
+        $image = $request->file('photo');
+
+        $manager = new ImageManager(new Driver());
+
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(635, 380)
+            ->save(public_path('upload/banner/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/banner/' . $name_gen;
     }
+
+    // Update slug if title changed
+    $validatedData['slug'] = generateUniqueSlug(
+        $request->title,
+        Banner::class,
+        $banner->id
+    );
+
+    $status = $banner->update($validatedData);
+
+    return redirect()->route('banner.index')->with(
+        $status ? 'success' : 'error',
+        $status
+            ? 'Banner successfully updated'
+            : 'Error occurred while updating banner'
+    );
+}
 
     /**
      * Remove the specified resource from storage.

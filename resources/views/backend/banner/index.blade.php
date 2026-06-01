@@ -43,7 +43,7 @@
                     <td>{{$banner->title}}</td>
                     <td>{{$banner->slug}}</td>
                     <td>
-                            <img src="{{ !empty($banner->photo) ? asset($banner->photo) : asset('upload/no_image.jpg') }}" style="max-width:100%" alt="avatar.png">
+                            <img src="{{ !empty($banner->photo) ? asset($banner->photo) : asset('upload/no_image.jpg') }}" style="width:100px; height: auto;" alt="avatar.png">
                     </td>
                     <td>
                         @if($banner->status=='active')
