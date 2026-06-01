@@ -5,7 +5,7 @@
 <div class="card">
     <h5 class="card-header">Edit Product</h5>
     <div class="card-body">
-      <form method="post" action="{{route('product.update',$product->id)}}">
+      <form method="post" action="{{route('product.update',$product->id)}}" enctype="multipart/form-data">
         @csrf 
         @method('PATCH')
         <div class="form-group">
@@ -121,20 +121,29 @@
           @enderror
         </div>
         <div class="form-group">
-          <label for="inputPhoto" class="col-form-label">Photo <span class="text-danger">*</span></label>
-          <div class="input-group">
-              <span class="input-group-btn">
-                  <a id="lfm" data-input="thumbnail" data-preview="holder" class="btn btn-primary text-white">
-                  <i class="fas fa-image"></i> Choose
-                  </a>
-              </span>
-          <input id="thumbnail" class="form-control" type="text" name="photo" value="{{$product->photo}}">
+    <label for="photo" class="col-form-label">
+        Photo <span class="text-danger">*</span>
+    </label>
+
+    <input
+        type="file"
+        name="photo"
+        id="photo"
+        class="form-control">
+
+    @if($product->photo)
+        <div class="mt-2">
+            <img src="{{ asset($product->photo) }}"
+                 alt="{{ $product->title }}"
+                 width="120"
+                 class="img-thumbnail">
         </div>
-        <div id="holder" style="margin-top:15px;max-height:100px;"></div>
-          @error('photo')
-          <span class="text-danger">{{$message}}</span>
-          @enderror
-        </div>
+    @endif
+
+    @error('photo')
+        <span class="text-danger">{{ $message }}</span>
+    @enderror
+</div>
         
         <div class="form-group">
           <label for="status" class="col-form-label">Status <span class="text-danger">*</span></label>

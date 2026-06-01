@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use App\Models\Category;
+
 use App\Models\Brand;
 
 use Illuminate\Support\Str;
@@ -40,46 +43,64 @@ class ProductController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $validatedData = $request->validate([
-            'title' => 'required|string',
-            'summary' => 'required|string',
-            'description' => 'nullable|string',
-            'photo' => 'required|string',
-            'size' => 'nullable',
-            'stock' => 'required|numeric',
-            'cat_id' => 'required|exists:categories,id',
-            'brand_id' => 'nullable|exists:brands,id',
-            'child_cat_id' => 'nullable|exists:categories,id',
-            'is_featured' => 'sometimes|in:1',
-            'status' => 'required|in:active,inactive',
-            'condition' => 'required|in:default,new,hot',
-            'price' => 'required|numeric',
-            'discount' => 'nullable|numeric',
-        ]);
+ public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'title' => 'required|string',
+        'summary' => 'required|string',
+        'description' => 'nullable|string',
+        'photo' => 'required|image|mimes:jpg,jpeg,png,gif,webp',
+        'size' => 'nullable',
+        'stock' => 'required|numeric',
+        'cat_id' => 'required|exists:categories,id',
+        'brand_id' => 'nullable|exists:brands,id',
+        'child_cat_id' => 'nullable|exists:categories,id',
+        'is_featured' => 'sometimes|in:1',
+        'status' => 'required|in:active,inactive',
+        'condition' => 'required|in:default,new,hot',
+        'price' => 'required|numeric',
+        'discount' => 'nullable|numeric',
+    ]);
 
-        $slug = generateUniqueSlug($request->title, Product::class);
-        $validatedData['slug'] = $slug;
-        $validatedData['is_featured'] = $request->input('is_featured', 0);
+    // Generate slug
+    $validatedData['slug'] = generateUniqueSlug(
+        $request->title,
+        Product::class
+    );
 
-        if ($request->has('size')) {
-            $validatedData['size'] = implode(',', $request->input('size'));
-        } else {
-            $validatedData['size'] = '';
-        }
+    // Featured checkbox
+    $validatedData['is_featured'] = $request->input('is_featured', 0);
 
-        $product = Product::create($validatedData);
+    // Sizes
+    $validatedData['size'] = $request->has('size')
+        ? implode(',', $request->size)
+        : '';
 
-        $message = $product
-            ? 'Product Successfully added'
-            : 'Please try again!!';
+    // Upload image
+    if ($request->hasFile('photo')) {
 
-        return redirect()->route('product.index')->with(
-            $product ? 'success' : 'error',
-            $message
-        );
+        $image = $request->file('photo');
+
+        $manager = new ImageManager(new Driver());
+
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(600, 600)
+            ->save(public_path('upload/product/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/product/' . $name_gen;
     }
+
+    $product = Product::create($validatedData);
+
+    return redirect()->route('product.index')->with(
+        $product ? 'success' : 'error',
+        $product
+            ? 'Product Successfully added'
+            : 'Please try again!!'
+    );
+}
 
     /**
      * Display the specified resource.
@@ -115,46 +136,72 @@ class ProductController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
-    {
-        $product = Product::findOrFail($id);
+public function update(Request $request, $id)
+{
+    $product = Product::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'title' => 'required|string',
-            'summary' => 'required|string',
-            'description' => 'nullable|string',
-            'photo' => 'required|string',
-            'size' => 'nullable',
-            'stock' => 'required|numeric',
-            'cat_id' => 'required|exists:categories,id',
-            'child_cat_id' => 'nullable|exists:categories,id',
-            'is_featured' => 'sometimes|in:1',
-            'brand_id' => 'nullable|exists:brands,id',
-            'status' => 'required|in:active,inactive',
-            'condition' => 'required|in:default,new,hot',
-            'price' => 'required|numeric',
-            'discount' => 'nullable|numeric',
-        ]);
+    $validatedData = $request->validate([
+        'title' => 'required|string',
+        'summary' => 'required|string',
+        'description' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'size' => 'nullable',
+        'stock' => 'required|numeric',
+        'cat_id' => 'required|exists:categories,id',
+        'child_cat_id' => 'nullable|exists:categories,id',
+        'is_featured' => 'sometimes|in:1',
+        'brand_id' => 'nullable|exists:brands,id',
+        'status' => 'required|in:active,inactive',
+        'condition' => 'required|in:default,new,hot',
+        'price' => 'required|numeric',
+        'discount' => 'nullable|numeric',
+    ]);
 
-        $validatedData['is_featured'] = $request->input('is_featured', 0);
+    // Update slug
+    $validatedData['slug'] = generateUniqueSlug(
+        $request->title,
+        Product::class,
+        $product->id
+    );
 
-        if ($request->has('size')) {
-            $validatedData['size'] = implode(',', $request->input('size'));
-        } else {
-            $validatedData['size'] = '';
+    // Featured checkbox
+    $validatedData['is_featured'] = $request->input('is_featured', 0);
+
+    // Sizes
+    $validatedData['size'] = $request->has('size')
+        ? implode(',', $request->size)
+        : '';
+
+    // Upload new image
+    if ($request->hasFile('photo')) {
+
+        // Delete old image
+        if ($product->photo && file_exists(public_path($product->photo))) {
+            unlink(public_path($product->photo));
         }
 
-        $status = $product->update($validatedData);
+        $image = $request->file('photo');
 
-        $message = $status
-            ? 'Product Successfully updated'
-            : 'Please try again!!';
+        $manager = new ImageManager(new Driver());
 
-        return redirect()->route('product.index')->with(
-            $status ? 'success' : 'error',
-            $message
-        );
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(600, 600)
+            ->save(public_path('upload/product/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/product/' . $name_gen;
     }
+
+    $status = $product->update($validatedData);
+
+    return redirect()->route('product.index')->with(
+        $status ? 'success' : 'error',
+        $status
+            ? 'Product Successfully updated'
+            : 'Please try again!!'
+    );
+}
 
     /**
      * Remove the specified resource from storage.
