@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Category;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+
 
 class CategoryController extends Controller
 {
@@ -35,32 +38,45 @@ class CategoryController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $validatedData = $request->validate([
-            'title' => 'required|string',
-            'summary' => 'nullable|string',
-            'photo' => 'nullable|string',
-            'status' => 'required|in:active,inactive',
-            'is_parent' => 'sometimes|in:1',
-            'parent_id' => 'nullable|exists:categories,id',
-        ]);
+  public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'title' => 'required|string',
+        'summary' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'status' => 'required|in:active,inactive',
+        'is_parent' => 'sometimes|in:1',
+        'parent_id' => 'nullable|exists:categories,id',
+    ]);
 
-        $slug = generateUniqueSlug($request->title, Category::class);
-        $validatedData['slug'] = $slug;
-        $validatedData['is_parent'] = $request->input('is_parent', 0);
+    $slug = generateUniqueSlug($request->title, Category::class);
+    $validatedData['slug'] = $slug;
+    $validatedData['is_parent'] = $request->input('is_parent', 0);
 
-        $category = Category::create($validatedData);
+    if ($request->hasFile('photo')) {
 
-        $message = $category
-            ? 'Category successfully added'
-            : 'Error occurred, Please try again!';
+        $image = $request->file('photo');
 
-        return redirect()->route('category.index')->with(
-            $category ? 'success' : 'error',
-            $message
-        );
+        $manager = new ImageManager(new Driver());
+
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(300, 300)
+            ->save(public_path('upload/category/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/category/' . $name_gen;
     }
+
+    $category = Category::create($validatedData);
+
+    return redirect()->route('category.index')->with(
+        $category ? 'success' : 'error',
+        $category
+            ? 'Category successfully added'
+            : 'Error occurred, Please try again!'
+    );
+}
 
     /**
      * Display the specified resource.
@@ -93,32 +109,57 @@ class CategoryController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
-    {
-        $category = Category::findOrFail($id);
+  public function update(Request $request, $id)
+{
+    $category = Category::findOrFail($id);
 
-        $validatedData = $request->validate([
-            'title' => 'required|string',
-            'summary' => 'nullable|string',
-            'photo' => 'nullable|string',
-            'status' => 'required|in:active,inactive',
-            'is_parent' => 'sometimes|in:1',
-            'parent_id' => 'nullable|exists:categories,id',
-        ]);
+    $validatedData = $request->validate([
+        'title' => 'required|string',
+        'summary' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'status' => 'required|in:active,inactive',
+        'is_parent' => 'sometimes|in:1',
+        'parent_id' => 'nullable|exists:categories,id',
+    ]);
 
-        $validatedData['is_parent'] = $request->input('is_parent', 0);
+    $validatedData['is_parent'] = $request->input('is_parent', 0);
 
-        $status = $category->update($validatedData);
+    // Update slug if title changes
+    $validatedData['slug'] = generateUniqueSlug(
+        $request->title,
+        Category::class,
+        $category->id
+    );
 
-        $message = $status
-            ? 'Category successfully updated'
-            : 'Error occurred, Please try again!';
+    if ($request->hasFile('photo')) {
 
-        return redirect()->route('category.index')->with(
-            $status ? 'success' : 'error',
-            $message
-        );
+        // Delete old image
+        if ($category->photo && file_exists(public_path($category->photo))) {
+            unlink(public_path($category->photo));
+        }
+
+        $image = $request->file('photo');
+
+        $manager = new ImageManager(new Driver());
+
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(300, 300)
+            ->save(public_path('upload/category/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/category/' . $name_gen;
     }
+
+    $status = $category->update($validatedData);
+
+    return redirect()->route('category.index')->with(
+        $status ? 'success' : 'error',
+        $status
+            ? 'Category successfully updated'
+            : 'Error occurred, Please try again!'
+    );
+}
 
     /**
      * Remove the specified resource from storage.

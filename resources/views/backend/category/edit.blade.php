@@ -5,7 +5,7 @@
 <div class="card">
     <h5 class="card-header">Edit Category</h5>
     <div class="card-body">
-      <form method="post" action="{{route('category.update',$category->id)}}">
+      <form method="post" action="{{route('category.update',$category->id)}}"  enctype="multipart/form-data">
         @csrf 
         @method('PATCH')
         <div class="form-group">
@@ -42,21 +42,27 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="inputPhoto" class="col-form-label">Photo</label>
-          <div class="input-group">
-              <span class="input-group-btn">
-                  <a id="lfm" data-input="thumbnail" data-preview="holder" class="btn btn-primary">
-                  <i class="fa fa-picture-o"></i> Choose
-                  </a>
-              </span>
-          <input id="thumbnail" class="form-control" type="text" name="photo" value="{{$category->photo}}">
+      <div class="form-group">
+    <label for="photo" class="col-form-label">Photo</label>
+
+    <input
+        type="file"
+        name="photo"
+        id="photo"
+        class="form-control">
+
+    @if($category->photo)
+        <div class="mt-2">
+            <img src="{{ asset($category->photo) }}"
+                 alt="Category Image"
+                 width="120">
         </div>
-        <div id="holder" style="margin-top:15px;max-height:100px;"></div>
-          @error('photo')
-          <span class="text-danger">{{$message}}</span>
-          @enderror
-        </div>
+    @endif
+
+    @error('photo')
+        <span class="text-danger">{{ $message }}</span>
+    @enderror
+</div>
         
         <div class="form-group">
           <label for="status" class="col-form-label">Status <span class="text-danger">*</span></label>

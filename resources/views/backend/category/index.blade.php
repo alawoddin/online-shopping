@@ -54,11 +54,8 @@
                         {{$category->parent_info->title ?? ''}}
                     </td>
                     <td>
-                        @if($category->photo)
-                            <img src="{{$category->photo}}" class="img-fluid" style="max-width:80px" alt="{{$category->photo}}">
-                        @else
-                            <img src="{{asset('backend/img/thumbnail-default.jpg')}}" class="img-fluid" style="max-width:80px" alt="avatar.png">
-                        @endif
+                        <img src="{{ !empty($category->photo) ? asset($category->photo) : asset('upload/no_image.jpg') }}"
+                                            style="width:100px; height: auto;" alt="avatar.png">
                     </td>
                     <td>
                         @if($category->status=='active')
