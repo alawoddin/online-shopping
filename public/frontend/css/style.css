@@ -745,7 +745,7 @@ Version:1.0
 	border:none;
 }
 .header.shop .header-inner {
-	background: #333;
+	background: linear-gradient(90deg, #ffba00 0%, #ff6c00 100%);
 }
 .header.shop.v3 .header-inner {
 	background: transparent;
