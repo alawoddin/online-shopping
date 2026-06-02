@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\PostCategory;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use App\Models\PostTag;
 use App\Models\User;
 
@@ -41,41 +43,65 @@ class PostController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'quote' => 'nullable|string|max:500',
-            'summary' => 'required|string|max:1000',
-            'description' => 'nullable|string',
-            'photo' => 'nullable|string|max:500',
-            'tags' => 'nullable|array',
-            'added_by' => 'nullable|exists:users,id',
-            'post_cat_id' => 'required|exists:post_categories,id',
-            'status' => 'required|in:active,inactive'
-        ]);
 
-        try {
-            $slug = generateUniqueSlug($request->title, Post::class);
-            $validated['slug'] = $slug;
-            $validated['added_by'] = $validated['added_by'] ?? auth()->id();
-            
-            if ($request->filled('tags')) {
-                $validated['tags'] = implode(',', $request->input('tags'));
-            } else {
-                $validated['tags'] = '';
-            }
 
-            $post = Post::create($validated);
-            
-            return redirect()->route('post.index')
-                ->with('success', 'Post successfully added');
-        } catch (\Exception $e) {
-            \Log::error('Post creation failed: ' . $e->getMessage());
-            return redirect()->route('post.index')
-                ->with('error', 'Please try again!');
+
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'title' => 'required|string|max:255',
+        'quote' => 'nullable|string|max:500',
+        'summary' => 'required|string|max:1000',
+        'description' => 'nullable|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'tags' => 'nullable|array',
+        'added_by' => 'nullable|exists:users,id',
+        'post_cat_id' => 'required|exists:post_categories,id',
+        'status' => 'required|in:active,inactive'
+    ]);
+
+    try {
+
+        $validated['slug'] = generateUniqueSlug(
+            $request->title,
+            Post::class
+        );
+
+        $validated['added_by'] = auth()->id();
+
+        $validated['tags'] = $request->filled('tags')
+            ? implode(',', $request->tags)
+            : '';
+
+        // Upload image
+        if ($request->hasFile('photo')) {
+
+            $image = $request->file('photo');
+
+            $manager = new ImageManager(new Driver());
+
+            $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+            $manager->read($image)
+                ->resize(800, 500)
+                ->save(public_path('upload/post/' . $name_gen));
+
+            $validated['photo'] = 'upload/post/' . $name_gen;
         }
+
+        Post::create($validated);
+
+        return redirect()->route('post.index')
+            ->with('success', 'Post successfully added');
+
+    } catch (\Exception $e) {
+
+        \Log::error('Post creation failed: ' . $e->getMessage());
+
+        return redirect()->route('post.index')
+            ->with('error', 'Please try again!');
     }
+}
 
     /**
      * Display the specified resource.

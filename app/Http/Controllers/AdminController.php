@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Settings;
 use App\Models\User;
 use App\Rules\MatchOldPassword;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -75,35 +77,84 @@ class AdminController extends Controller
         return view('backend.setting')->with('data', $data);
     }
 
-    public function settingsUpdate(Request $request)
-    {
-        $validated = $request->validate([
-            'short_des' => 'required|string|max:500',
-            'description' => 'required|string',
-            'photo' => 'required|string|max:500',
-            'logo' => 'required|string|max:500',
-            'address' => 'required|string|max:500',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
-        ]);
-        
-        try {
-            $settings = Settings::first();
-            if (!$settings) {
-                $settings = Settings::create($validated);
-            } else {
-                $settings->update($validated);
-            }
-            
-            return redirect()->route('admin')
-                ->with('success', 'Setting successfully updated');
-                
-        } catch (\Exception $e) {
-            \Log::error('Settings update failed: ' . $e->getMessage());
-            return redirect()->route('admin')
-                ->with('error', 'Please try again');
+   public function settingsUpdate(Request $request)
+{
+    $validated = $request->validate([
+        'short_des' => 'required|string|max:500',
+        'description' => 'required|string',
+        'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp',
+        'logo' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp,svg',
+        'address' => 'required|string|max:500',
+        'email' => 'required|email|max:255',
+        'phone' => 'required|string|max:20',
+    ]);
+
+    try {
+
+        $settings = Settings::first();
+
+        if (!$settings) {
+            $settings = new Settings();
         }
+
+        $manager = new ImageManager(new Driver());
+
+        // Upload Photo
+        if ($request->hasFile('photo')) {
+
+            if ($settings->photo && file_exists(public_path($settings->photo))) {
+                unlink(public_path($settings->photo));
+            }
+
+            $image = $request->file('photo');
+
+            $photo_name = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+            $manager->read($image)
+                ->resize(100, 100)
+                ->save(public_path('upload/settings/' . $photo_name));
+
+            $validated['photo'] = 'upload/settings/' . $photo_name;
+        } else {
+            unset($validated['photo']);
+        }
+
+        // Upload Logo
+        if ($request->hasFile('logo')) {
+
+            if ($settings->logo && file_exists(public_path($settings->logo))) {
+                unlink(public_path($settings->logo));
+            }
+
+            $image = $request->file('logo');
+
+            $logo_name = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+            $manager->read($image)
+                ->resize(50, 50)
+                ->save(public_path('upload/logo/' . $logo_name));
+
+            $validated['logo'] = 'upload/logo/' . $logo_name;
+        } else {
+            unset($validated['logo']);
+        }
+
+        $settings->fill($validated);
+        $settings->save();
+
+        return redirect()
+            ->route('admin')
+            ->with('success', 'Setting successfully updated');
+
+    } catch (\Exception $e) {
+
+        \Log::error('Settings update failed: ' . $e->getMessage());
+
+        return redirect()
+            ->route('admin')
+            ->with('error', 'Please try again');
     }
+}
 
     public function changePassword(){
         return view('backend.layouts.changePassword');
