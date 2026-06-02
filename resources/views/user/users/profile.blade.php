@@ -55,19 +55,27 @@
                       </div>
               
                       <div class="form-group">
-                      <label for="inputPhoto" class="col-form-label">Photo</label>
-                      <div class="input-group">
-                          <span class="input-group-btn">
-                              <a id="lfm" data-input="thumbnail" data-preview="holder" class="btn btn-primary">
-                              <i class="fa fa-picture-o"></i> Choose
-                              </a>
-                          </span>
-                          <input id="thumbnail" class="form-control" type="text" name="photo" value="{{$profile->photo}}">
-                      </div>
-                        @error('photo')
-                        <span class="text-danger">{{$message}}</span>
-                        @enderror
-                      </div>
+    <label for="photo" class="col-form-label">Photo</label>
+
+    <input
+        type="file"
+        name="photo"
+        id="photo"
+        class="form-control">
+
+    @if(!empty($profile->photo))
+        <div class="mt-2">
+            <img src="{{ asset($profile->photo) }}"
+                 alt="Profile Photo"
+                 width="120"
+                 class="img-thumbnail">
+        </div>
+    @endif
+
+    @error('photo')
+        <span class="text-danger">{{ $message }}</span>
+    @enderror
+</div>
                       <div class="form-group">
                           <label for="role" class="col-form-label">Role</label>
                           <select name="role" class="form-control">

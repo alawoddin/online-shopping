@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Order;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use App\Models\ProductReview;
 use App\Models\PostComment;
 use App\Rules\MatchOldPassword;
@@ -39,19 +41,50 @@ class HomeController extends Controller
         return view('user.users.profile')->with('profile',$profile);
     }
 
-    public function profileUpdate(Request $request,$id){
-        // return $request->all();
-        $user=User::findOrFail($id);
-        $data=$request->all();
-        $status=$user->fill($data)->save();
-        if($status){
-            request()->session()->flash('success','Successfully updated your profile');
+    public function profileUpdate(Request $request, $id)
+{
+    $user = User::findOrFail($id);
+
+    $validatedData = $request->validate([
+        'name' => 'required|string|max:255',
+    ]);
+
+    if ($request->hasFile('photo')) {
+
+        // Delete old photo
+        if ($user->photo && file_exists(public_path($user->photo))) {
+            unlink(public_path($user->photo));
         }
-        else{
-            request()->session()->flash('error','Please try again!');
-        }
-        return redirect()->back();
+
+        $image = $request->file('photo');
+
+        $manager = new ImageManager(new Driver());
+
+        $name_gen = hexdec(uniqid()) . '.' . $image->getClientOriginalExtension();
+
+        $manager->read($image)
+            ->resize(300, 300)
+            ->save(public_path('upload/profile/' . $name_gen));
+
+        $validatedData['photo'] = 'upload/profile/' . $name_gen;
     }
+
+    $status = $user->update($validatedData);
+
+    if ($status) {
+        request()->session()->flash(
+            'success',
+            'Successfully updated your profile'
+        );
+    } else {
+        request()->session()->flash(
+            'error',
+            'Please try again!'
+        );
+    }
+
+    return redirect()->back();
+}
 
     // Order
     public function orderIndex(){
