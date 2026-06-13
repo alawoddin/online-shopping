@@ -29,7 +29,7 @@
             <td>{{$order->first_name}} {{$order->last_name}}</td>
             <td>{{$order->email}}</td>
             <td>{{$order->quantity}}</td>
-            <td>${{$order->shipping->price}}</td>
+            <td>${{$order->shipping->price ?? 'N/L'}}</td>
             <td>${{number_format($order->total_amount,2)}}</td>
             <td>
                 @if($order->status=='new')
@@ -80,7 +80,7 @@
                     </tr>
                     <tr>
                         <td>Shipping Charge</td>
-                        <td> : $ {{$order->shipping->price}}</td>
+                        <td> : $ {{$order->shipping->price ?? 'N/L'}}</td>
                     </tr>
                     <tr>
                       <td>Coupon</td>
