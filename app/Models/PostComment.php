@@ -9,7 +9,7 @@ class PostComment extends Model
     protected $fillable=['user_id','post_id','comment','replied_comment','parent_id','status'];
 
     public function user_info(){
-        return $this->hasOne('App\User','id','user_id');
+        return $this->hasOne('App\Models\User','id','user_id');
     }
     public static function getAllComments(){
         return PostComment::with('user_info')->paginate(10);
