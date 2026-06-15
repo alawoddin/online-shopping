@@ -78,7 +78,9 @@ class Helper
         if ($option == 'all') {
             return PostTag::orderBy('id', 'desc')->get();
         }
-        return PostTag::has('posts')->orderBy('id', 'desc')->get();
+       return PostTag::has('post')
+    ->orderBy('id','desc')
+    ->get();
     }
 
     public static function postCategoryList($option = "all")
@@ -86,7 +88,7 @@ class Helper
         if ($option == 'all') {
             return PostCategory::orderBy('id', 'DESC')->get();
         }
-        return PostCategory::has('posts')->orderBy('id', 'DESC')->get();
+        return PostCategory::has('post')->orderBy('id', 'DESC')->get();
     }
     // Cart Count
     public static function cartCount($user_id = '')
